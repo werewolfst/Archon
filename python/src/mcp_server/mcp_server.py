@@ -1,13 +1,11 @@
 """
-MCP Server for Archon (Microservices Version)
+MCP Server for Archon Knowledge Base (Simplified Version)
 
-This is the MCP server that uses HTTP calls to other services
-instead of importing heavy dependencies directly. This significantly reduces
-the container size from 1.66GB to ~150MB.
+This is a simplified MCP server focused solely on knowledge base operations.
+It uses HTTP calls to the RAG service for knowledge queries and searches.
 
 Modules:
 - RAG Module: RAG queries, search, and source management via HTTP
-- Project Module: Task and project management via HTTP
 - Health & Session: Local operations
 
 Note: Crawling and document upload operations are handled directly by the
@@ -83,8 +81,8 @@ server_port = int(mcp_port)
 @dataclass
 class ArchonContext:
     """
-    Context for MCP server.
-    No heavy dependencies - just service client for HTTP calls.
+    Context for MCP server focused on knowledge base operations.
+    No heavy dependencies - just service client for HTTP calls to RAG service.
     """
 
     service_client: Any
@@ -96,7 +94,6 @@ class ArchonContext:
             self.health_status = {
                 "status": "healthy",
                 "api_service": False,
-                "agents_service": False,
                 "last_health_check": None,
             }
         if self.startup_time is None:
@@ -110,9 +107,8 @@ async def perform_health_checks(context: ArchonContext):
         service_health = await context.service_client.health_check()
 
         context.health_status["api_service"] = service_health.get("api_service", False)
-        context.health_status["agents_service"] = service_health.get("agents_service", False)
 
-        # Overall status
+        # Overall status - only need API service for knowledge base operations
         all_critical_ready = context.health_status["api_service"]
 
         context.health_status["status"] = "healthy" if all_critical_ready else "degraded"
@@ -121,7 +117,7 @@ async def perform_health_checks(context: ArchonContext):
         if not all_critical_ready:
             logger.warning(f"Health check failed: {context.health_status}")
         else:
-            logger.info("Health check passed - dependent services healthy")
+            logger.info("Health check passed - API service healthy")
 
     except Exception as e:
         logger.error(f"Health check error: {e}")
@@ -189,88 +185,57 @@ async def lifespan(server: FastMCP) -> AsyncIterator[ArchonContext]:
 
 # Define MCP instructions for Claude Code and other clients
 MCP_INSTRUCTIONS = """
-# Archon MCP Server Instructions
+# Archon Knowledge Base MCP Server Instructions
 
 ## 🚨 CRITICAL RULES (ALWAYS FOLLOW)
-1. **Task Management**: ALWAYS use Archon MCP tools for task management.
-   - Combine with your local TODO tools for granular tracking
-   - First TODO: Update Archon task status
-   - Last TODO: Update Archon with findings/completion
-
-2. **Research First**: Before implementing, use perform_rag_query and search_code_examples
-3. **Task-Driven Development**: Never code without checking current tasks first
+1. **Knowledge-First Approach**: Use RAG queries and code search for all research
+2. **Research Before Implementation**: Always search for relevant documentation and examples
+3. **Source Verification**: Check available sources before querying
 
 ## 📋 Core Workflow
 
-### Task Management Cycle
-1. **Get current task**: `get_task(task_id="...")`
-2. **Mark as doing**: `update_task(task_id="...", status="doing")`
-3. **Research phase**:
+### Knowledge Discovery Cycle
+1. **Check available sources**: `get_available_sources()`
+2. **Research phase**:
    - `perform_rag_query(query="...", match_count=5)`
    - `search_code_examples(query="...", match_count=3)`
-4. **Implementation**: Code based on research findings
-5. **Mark for review**: `update_task(task_id="...", status="review")`
-6. **Get next task**: `list_tasks(filter_by="status", filter_value="todo")`
+3. **Apply findings**: Use discovered knowledge in implementation
+4. **Verify understanding**: Cross-reference multiple sources
 
-### Available Task Functions
-- `create_task(project_id, title, description, assignee="User", ...)`
-- `list_tasks(filter_by="status", filter_value="todo", project_id=None)`
-- `get_task(task_id)`
-- `update_task(task_id, title=None, status=None, assignee=None, ...)`
-- `delete_task(task_id)`
-
-## 🏗️ Project Management
-
-### Project Functions
-- `create_project(title, description, github_repo=None)`
-- `list_projects()`
-- `get_project(project_id)`
-- `update_project(project_id, title=None, description=None, ...)`
-- `delete_project(project_id)`
-
-### Document Functions
-- `create_document(project_id, title, document_type, content=None, ...)`
-- `list_documents(project_id)`
-- `get_document(project_id, doc_id)`
-- `update_document(project_id, doc_id, title=None, content=None, ...)`
-- `delete_document(project_id, doc_id)`
+### Available Knowledge Functions
+- `get_available_sources()` - List all knowledge base sources
+- `perform_rag_query(query, source_domain=None, match_count=5)` - Search documentation
+- `search_code_examples(query, source_domain=None, match_count=5)` - Find code examples
 
 ## 🔍 Research Patterns
 - **Architecture patterns**: `perform_rag_query(query="[tech] architecture patterns", match_count=5)`
 - **Code examples**: `search_code_examples(query="[feature] implementation", match_count=3)`
-- **Source discovery**: `get_available_sources()`
+- **API documentation**: `perform_rag_query(query="[API] usage examples", match_count=5)`
+- **Best practices**: `perform_rag_query(query="[topic] best practices", match_count=3)`
 - Keep match_count around 3-5 for focused results
 
-## 📊 Task Status Flow
-`todo` → `doing` → `review` → `done`
-- Only ONE task in 'doing' status at a time
-- Use 'review' for completed work awaiting validation
-- Mark tasks 'done' only after verification
-
-## 💾 Version Management
-- `create_version(project_id, field_name, content, change_summary)`
-- `list_versions(project_id, field_name=None)`
-- `get_version(project_id, field_name, version_number)`
-- `restore_version(project_id, field_name, version_number)`
-- Field names: "docs", "features", "data", "prd"
-
 ## 🎯 Best Practices
-1. **Atomic Tasks**: Create tasks that take 1-4 hours
-2. **Clear Descriptions**: Include acceptance criteria in task descriptions
-3. **Use Features**: Group related tasks with feature labels
-4. **Add Sources**: Link relevant documentation to tasks
-5. **Track Progress**: Update task status as you work
+1. **Start with Sources**: Always check `get_available_sources()` first
+2. **Focused Queries**: Use specific, targeted search terms
+3. **Domain Filtering**: Use source_domain parameter to filter by specific sources
+4. **Multiple Searches**: Combine general RAG queries with specific code searches
+5. **Validate Results**: Cross-check information across multiple sources
+
+## 📊 Source Management
+- Use `source_domain` parameter to filter by specific documentation sites
+- Examples: 'docs.anthropic.com', 'fastapi.tiangolo.com', 'docs.python.org'
+- Sources are identified by domain name, not internal IDs
 """
 
 # Initialize the main FastMCP server with fixed configuration
 try:
     logger.info("🏗️ MCP SERVER INITIALIZATION:")
-    logger.info("   Server Name: archon-mcp-server")
-    logger.info("   Description: MCP server using HTTP calls")
+    logger.info("   Server Name: archon-knowledge-mcp-server")
+    logger.info("   Description: MCP server for knowledge base operations")
 
     mcp = FastMCP(
-        "archon-mcp-server",
-        description="MCP server for Archon - uses HTTP calls to other services",
+        "archon-knowledge-mcp-server",
+        description="MCP server for Archon knowledge base - RAG queries and code search",
         instructions=MCP_INSTRUCTIONS,
         lifespan=lifespan,
         host=server_host,
@@ -391,97 +356,6 @@ def register_modules():
         logger.error(f"✗ Error registering RAG module: {e}")
         logger.error(traceback.format_exc())
 
-    # Import and register all feature tools - separated and focused
-
-    # Project Management Tools
-    try:
-        from src.mcp_server.features.projects import register_project_tools
-
-        register_project_tools(mcp)
-        modules_registered += 1
-        logger.info("✓ Project tools registered")
-    except ImportError as e:
-        # Module not found - this is acceptable in modular architecture
-        logger.warning(f"⚠ Project tools module not available (optional): {e}")
-    except (SyntaxError, NameError, AttributeError) as e:
-        # Code errors that should not be ignored
-        logger.error(f"✗ Code error in project tools - MUST FIX: {e}")
-        logger.error(traceback.format_exc())
-        raise  # Re-raise to prevent running with broken code
-    except Exception as e:
-        # Unexpected errors during registration
-        logger.error(f"✗ Failed to register project tools: {e}")
-        logger.error(traceback.format_exc())
-        # Don't raise - allow other modules to register
-
-    # Task Management Tools
-    try:
-        from src.mcp_server.features.tasks import register_task_tools
-
-        register_task_tools(mcp)
-        modules_registered += 1
-        logger.info("✓ Task tools registered")
-    except ImportError as e:
-        logger.warning(f"⚠ Task tools module not available (optional): {e}")
-    except (SyntaxError, NameError, AttributeError) as e:
-        logger.error(f"✗ Code error in task tools - MUST FIX: {e}")
-        logger.error(traceback.format_exc())
-        raise
-    except Exception as e:
-        logger.error(f"✗ Failed to register task tools: {e}")
-        logger.error(traceback.format_exc())
-
-    # Document Management Tools
-    try:
-        from src.mcp_server.features.documents import register_document_tools
-
-        register_document_tools(mcp)
-        modules_registered += 1
-        logger.info("✓ Document tools registered")
-    except ImportError as e:
-        logger.warning(f"⚠ Document tools module not available (optional): {e}")
-    except (SyntaxError, NameError, AttributeError) as e:
-        logger.error(f"✗ Code error in document tools - MUST FIX: {e}")
-        logger.error(traceback.format_exc())
-        raise
-    except Exception as e:
-        logger.error(f"✗ Failed to register document tools: {e}")
-        logger.error(traceback.format_exc())
-
-    # Version Management Tools
-    try:
-        from src.mcp_server.features.documents import register_version_tools
-
-        register_version_tools(mcp)
-        modules_registered += 1
-        logger.info("✓ Version tools registered")
-    except ImportError as e:
-        logger.warning(f"⚠ Version tools module not available (optional): {e}")
-    except (SyntaxError, NameError, AttributeError) as e:
-        logger.error(f"✗ Code error in version tools - MUST FIX: {e}")
-        logger.error(traceback.format_exc())
-        raise
-    except Exception as e:
-        logger.error(f"✗ Failed to register version tools: {e}")
-        logger.error(traceback.format_exc())
-
-    # Feature Management Tools
-    try:
-        from src.mcp_server.features.feature_tools import register_feature_tools
-
-        register_feature_tools(mcp)
-        modules_registered += 1
-        logger.info("✓ Feature tools registered")
-    except ImportError as e:
-        logger.warning(f"⚠ Feature tools module not available (optional): {e}")
-    except (SyntaxError, NameError, AttributeError) as e:
-        logger.error(f"✗ Code error in feature tools - MUST FIX: {e}")
-        logger.error(traceback.format_exc())
-        raise
-    except Exception as e:
-        logger.error(f"✗ Failed to register feature tools: {e}")
-        logger.error(traceback.format_exc())
-
     logger.info(f"📦 Total modules registered: {modules_registered}")
 
     if modules_registered == 0:
@@ -502,14 +376,14 @@ def main():
     """Main entry point for the MCP server."""
     try:
         # Initialize Logfire first
-        setup_logfire(service_name="archon-mcp-server")
+        setup_logfire(service_name="archon-knowledge-mcp-server")
 
-        logger.info("🚀 Starting Archon MCP Server")
+        logger.info("🚀 Starting Archon Knowledge Base MCP Server")
         logger.info("   Mode: Streamable HTTP")
         logger.info(f"   URL: http://{server_host}:{server_port}/mcp")
 
-        mcp_logger.info("🔥 Logfire initialized for MCP server")
-        mcp_logger.info(f"🌟 Starting MCP server - host={server_host}, port={server_port}")
+        mcp_logger.info("🔥 Logfire initialized for knowledge base MCP server")
+        mcp_logger.info(f"🌟 Starting knowledge MCP server - host={server_host}, port={server_port}")
 
         mcp.run(transport="streamable-http")
 
