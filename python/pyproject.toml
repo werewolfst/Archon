@@ -17,6 +17,11 @@ explicit = true
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu" }]
 
+# UV configuration for network timeouts
+[tool.uv]
+timeout = 300  # 5 minutes timeout
+retries = 5    # More retries
+
 [dependency-groups]
 # Development dependencies for linting and testing
 dev = [
@@ -70,7 +75,7 @@ server = [
 # Optional reranking dependencies for server
 server-reranking = [
     "sentence-transformers>=4.1.0",
-    "torch>=2.0.0",
+    # "torch>=2.0.0",
     "transformers>=4.30.0",
 ]
 
