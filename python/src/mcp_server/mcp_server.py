@@ -1,7 +1,7 @@
 """
-MCP Server for Archon Knowledge Base (Simplified Version)
+MCP Server for Aily Knowledge Base (Simplified Version)
 
-This is a simplified MCP server focused solely on knowledge base operations.
+This is a simplified MCP server focused solely on knowledge base operations for Aily.
 It uses HTTP calls to the RAG service for knowledge queries and searches.
 
 Modules:
@@ -79,9 +79,10 @@ server_port = int(mcp_port)
 
 
 @dataclass
+
 class ArchonContext:
     """
-    Context for MCP server focused on knowledge base operations.
+    Context for MCP server focused on knowledge base operations for Aily.
     No heavy dependencies - just service client for HTTP calls to RAG service.
     """
 
@@ -185,7 +186,7 @@ async def lifespan(server: FastMCP) -> AsyncIterator[ArchonContext]:
 
 # Define MCP instructions for Claude Code and other clients
 MCP_INSTRUCTIONS = """
-# Archon Knowledge Base MCP Server Instructions
+# Aily Knowledge Base MCP Server Instructions
 
 ## 🚨 CRITICAL RULES (ALWAYS FOLLOW)
 1. **Knowledge-First Approach**: Use RAG queries and code search for all research
@@ -197,8 +198,8 @@ MCP_INSTRUCTIONS = """
 ### Knowledge Discovery Cycle
 1. **Check available sources**: `get_available_sources()`
 2. **Research phase**:
-   - `perform_rag_query(query="...", match_count=5)`
-   - `search_code_examples(query="...", match_count=3)`
+    - `perform_rag_query(query="...", match_count=5)`
+    - `search_code_examples(query="...", match_count=3)`
 3. **Apply findings**: Use discovered knowledge in implementation
 4. **Verify understanding**: Cross-reference multiple sources
 
@@ -230,12 +231,12 @@ MCP_INSTRUCTIONS = """
 # Initialize the main FastMCP server with fixed configuration
 try:
     logger.info("🏗️ MCP SERVER INITIALIZATION:")
-    logger.info("   Server Name: archon-knowledge-mcp-server")
-    logger.info("   Description: MCP server for knowledge base operations")
+    logger.info("   Server Name: aily-knowledge-mcp-server")
+    logger.info("   Description: MCP server for knowledge base operations (Aily)")
 
     mcp = FastMCP(
-        "archon-knowledge-mcp-server",
-        description="MCP server for Archon knowledge base - RAG queries and code search",
+        "aily-knowledge-mcp-server",
+        description="MCP server for Aily knowledge base - RAG queries and code search",
         instructions=MCP_INSTRUCTIONS,
         lifespan=lifespan,
         host=server_host,
@@ -372,13 +373,14 @@ except Exception as e:
     raise
 
 
+
 def main():
     """Main entry point for the MCP server."""
     try:
         # Initialize Logfire first
-        setup_logfire(service_name="archon-knowledge-mcp-server")
+        setup_logfire(service_name="aily-knowledge-mcp-server")
 
-        logger.info("🚀 Starting Archon Knowledge Base MCP Server")
+        logger.info("🚀 Starting Aily Knowledge Base MCP Server")
         logger.info("   Mode: Streamable HTTP")
         logger.info(f"   URL: http://{server_host}:{server_port}/mcp")
 
